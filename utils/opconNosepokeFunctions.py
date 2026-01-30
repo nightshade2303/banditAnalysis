@@ -3,11 +3,7 @@ import pandas as pd
 import os
 import re
 from functools import partial
-<<<<<<< HEAD
 from utils import plotSettings
-=======
-#from utils import plotSettings
->>>>>>> 80714cd (initial commit)
 
 # FASTER - 20241126
 def get_files(log_folder='L:/Box1/', extension='.dat'):
@@ -448,8 +444,4 @@ def calc_rr(sessdf, trialsinsess=150, arg = 'head', numtrials = 150):
         elif arg == 'tail':
             rr[animal] = np.mean(filtered.groupby(['session#']).tail(numtrials)['reward'])
     rr = sort_dict(rr)
-<<<<<<< HEAD
     return rr
-=======
-    return rr
->>>>>>> 80714cd (initial commit)

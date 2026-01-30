@@ -1,3 +1,4 @@
+archive/plots/
 archive/
 data/
 *.out
@@ -7,3 +8,5 @@ data/
 *.txt
 build/
 dist/
+__pycache__/
+.ipynb_checkpoints/
