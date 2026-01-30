@@ -1,9 +1,9 @@
-archive/*
-data/*.mat
+archive/
+data/
 *.out
 *.err
 *.csv
 *.log
 *.txt
-build/*
-dist/*
+build/
+dist/
