@@ -9,7 +9,11 @@ def session_averager(df, mask = None, metric = None, tasks = None):
 
         metric_dict = {}
         for task in tasks:
+<<<<<<< HEAD
             for ind, (an, group) in enumerate(df.groupby('animal')):
+=======
+            for ind, (an, group) in enumerate(df[df.task == task].groupby('animal')):
+>>>>>>> 80714cd (initial commit)
                 L = subset_metric_to_numpy(group, metric)
                 metric_dict[an, task] = np.mean(L, axis = 0)
 

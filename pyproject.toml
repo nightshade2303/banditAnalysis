@@ -1,0 +1,12 @@
+[project]
+name = "banditAnalysis"
+version = "0.0.1"
+description = "A package for model fitting rat data"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: Windows/Unix",
+]
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"

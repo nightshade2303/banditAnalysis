@@ -1,0 +1,7 @@
+Metadata-Version: 2.4
+Name: banditAnalysis
+Version: 0.0.1
+Summary: A package for model fitting rat data
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: Windows/Unix
+Requires-Python: >=3.9

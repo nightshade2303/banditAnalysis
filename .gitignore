@@ -1,0 +1,7 @@
+*.out
+*.err
+*.csv
+*.log
+*.txt
+build/*
+dist/*

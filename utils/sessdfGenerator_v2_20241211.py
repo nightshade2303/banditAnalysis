@@ -1,6 +1,11 @@
 from opconNosepokeFunctions import *
 from supplementaryFunctions import *
 import glob
+<<<<<<< HEAD
+=======
+import datetime
+
+>>>>>>> 80714cd (initial commit)
 toneStartMarker = 23
 trialStartMarker = 81
 trialHitMarker = 51
@@ -17,12 +22,23 @@ list_sessionMarker = [unstrSessionMarker, strSessionMarker]
 arms = 4
 # change list to include new animals, if required # Xatu Goldeen Zacian Cresselia Mesprit
 current_animals = ['test05022023', 'Blissey', 'Chikorita', 'Darkrai',
+<<<<<<< HEAD
                    'Eevee', 'Goldeen', 'Hoppip', 'Inkay', 'Jirachi', 'Kirlia', 'Mesprit',
                    'Nidorina', 'Oddish', 'Phione', 'Quilava', 'Raltz', 'Shinx', 'Togepi',
                    'Umbreon', 'Vulpix', 'Xatu', 'Yanma', 'Zacian',
                    'Alakazam', 'Bayleef', 'Cresselia',
                    'Emolga','Giratina', 'Haxorus', 'Ivysaur', 'Jigglypuff', 'Lugia',
                    'Ninetales', 'Onix']
+=======
+                    'Eevee', 'Goldeen', 'Hoppip', 'Inkay', 'Jirachi', 'Kirlia', 'Mesprit',
+                    'Nidorina', 'Oddish', 'Phione', 'Quilava', 'Raltz', 'Shinx', 'Togepi',
+                    'Umbreon', 'Vulpix', 'Xatu', 'Yanma', 'Zacian',
+                    'Alakazam', 'Bayleef', 'Cresselia',
+                    'Emolga','Giratina', 'Haxorus', 'Ivysaur', 'Jigglypuff', 'Lugia',
+                    'Ninetales', 'Onix', 'Pichu',
+                    'Quaxly', 'Sableye', 'Torchic',
+                    'Uxie','Vanillish', 'Whismur','Xerneas', 'Yamper', 'Zorua']
+>>>>>>> 80714cd (initial commit)
 
 # full dataset generation, with provision for demarcating lesioned sessions using date of reentry into task
 files = {}
@@ -132,6 +148,31 @@ mask5 = (sessdf.datetime > datetime.datetime(2025, 4, 23)) & (sessdf.animal == '
 sessdf.loc[mask5, 'task'] = 'sham'
 mask5 = (sessdf.datetime > datetime.datetime(2025, 4, 29)) & (sessdf.animal == 'Lugia')
 sessdf.loc[mask5, 'task'] = 'dms'
+<<<<<<< HEAD
+=======
+mask5 = (sessdf.datetime > datetime.datetime(2025, 6, 11)) & (sessdf.animal == 'Onix')
+sessdf.loc[mask5, 'task'] = 'oe_implant'
+mask5 = (sessdf.datetime > datetime.datetime(2025, 7, 31)) & (sessdf.animal == 'Pichu')
+sessdf.loc[mask5, 'task'] = 'oe_implant'
+mask5 = (sessdf.datetime > datetime.datetime(2025, 11, 26)) & (sessdf.animal == 'Quaxly')
+sessdf.loc[mask5, 'task'] = 'dms'
+mask5 = (sessdf.datetime > datetime.datetime(2025, 11, 26)) & (sessdf.animal == 'Sableye')
+sessdf.loc[mask5, 'task'] = 'dms'
+mask5 = (sessdf.datetime > datetime.datetime(2025, 11, 26)) & (sessdf.animal == 'Torchic')
+sessdf.loc[mask5, 'task'] = 'dls'
+mask5 = (sessdf.datetime > datetime.datetime(2025, 11, 27)) & (sessdf.animal == 'Uxie')
+sessdf.loc[mask5, 'task'] = 'dls'
+mask5 = (sessdf.datetime > datetime.datetime(2025, 11, 26)) & (sessdf.animal == 'Vanillish')
+sessdf.loc[mask5, 'task'] = 'dls'
+mask5 = (sessdf.datetime > datetime.datetime(2025, 11, 27)) & (sessdf.animal == 'Whismur')
+sessdf.loc[mask5, 'task'] = 'dms'
+mask5 = (sessdf.datetime > datetime.datetime(2025, 10, 8)) & (sessdf.animal == 'Xerneas')
+sessdf.loc[mask5, 'task'] = 'oe_implant'
+mask5 = (sessdf.datetime > datetime.datetime(2025, 11, 27)) & (sessdf.animal == 'Yamper')
+sessdf.loc[mask5, 'task'] = 'dls'
+mask5 = (sessdf.datetime > datetime.datetime(2025, 11, 27)) & (sessdf.animal == 'Zorua')
+sessdf.loc[mask5, 'task'] = 'dls'
+>>>>>>> 80714cd (initial commit)
 
 sessdf.to_csv('L:/4portProb_processed/sessdf.csv')
 
