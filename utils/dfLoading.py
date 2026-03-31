@@ -29,7 +29,7 @@ def subset_trials(df, trialsinsess, head_trials = None, tail_trials = None):
     if tail_trials is not None:
         assert tail_trials<=trialsinsess
         assert isinstance(tail_trials, int), "num_trials should be int"
-        subset = subset.groupby(['animal', 'session']).head(head_trials)
+        subset = subset.groupby(['animal', 'session']).tail(tail_trials)
     
     return subset
 
@@ -57,6 +57,8 @@ def describe_dataset(df, mask=None):
 def add_block_groups(df):
     # make a column called sess_block
     # if session changes within 40min,  number +1
+    # first reset index or everything will go crazy
+    # df = df.reset_index()
     df['sess_block'] = 0
     thing = df.groupby(['animal', 'task', 'session']).datetime.head(1).astype('datetime64[ns]').diff().dt.seconds>2400
     df.loc[thing[thing == True].index, 'sess_block'] = 1
