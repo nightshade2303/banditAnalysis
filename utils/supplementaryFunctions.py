@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+from collections.abc import Iterable
+from typing import Any
+
 import numpy as np
 import csv
 def calc_prob(pk):
@@ -5,6 +10,44 @@ def calc_prob(pk):
     unique, counts = np.unique(np.array(pk), return_counts =True)
     outcomes = len(pk)
     return counts/outcomes
+
+
+def calc_prob_axis(pk: Any, axis: int | None = None) -> np.ndarray | list[np.ndarray]:
+    """Return empirical probabilities, optionally computed slice-wise along an axis.
+
+    Parameters
+    ----------
+    pk:
+        Input data containing events.
+    axis:
+        Axis to compute probabilities along. If ``None``, the input is treated as
+        a flat 1D collection and the result matches ``calc_prob``.
+
+    Returns
+    -------
+    numpy.ndarray or list[numpy.ndarray]
+        For ``axis=None``, a 1D probability vector.
+        For ``axis`` set, a list of probability vectors for each slice along the
+        chosen axis. If all slices produce the same length, the result is stacked
+        into a single NumPy array.
+    """
+
+    arr = np.asarray(pk)
+
+    if axis is None:
+        values, counts = np.unique(arr, return_counts=True)
+        _ = values
+        outcomes = arr.size
+        return counts / outcomes
+
+    moved = np.moveaxis(arr, axis, 0)
+    slices = moved.reshape(moved.shape[0], -1)
+    probabilities = [calc_prob(slice_values) for slice_values in slices]
+
+    try:
+        return np.stack(probabilities, axis=0)
+    except ValueError:
+        return probabilities
 
 # adds two unequal numpy vectors a and b to return c e.g. if a = [20,40,60], b= [10,20,40, 60], c=[30, 60, 100, 60]
 def add_uneq_vec(a,b):

@@ -81,7 +81,6 @@ def sim_ql_gen(x0, arr_size, arms, return_values = False):
     rng = np.random.default_rng(42)
     dist_mat = abs(np.arange(arms)[:, None] - np.arange(arms)[None, :])
     
-
     chosen_actions = np.ones(shape = (rounds, trials))*np.nan
     rewarded = np.ones(shape = (rounds, trials))*np.nan
 
@@ -117,7 +116,7 @@ def sim_ql_gen(x0, arr_size, arms, return_values = False):
             q[rnd, t, :] = q[rnd, t, :] - (decay*q[rnd, t, :])
 
             # calculate softmax
-            q_upper = q[rnd, t, :] #+ beta*upper
+            q_upper = q[rnd, t, :]  #+ beta*upper
             p = q_upper/tau + prev_a*sticky
             p = p - np.max(p)
             p = np.exp(p)/np.sum(np.exp(p))
@@ -172,23 +171,23 @@ if __name__ == "__main__":
     block_info = np.ones_like(r)
     print(f'Peak reward rate {np.mean(r, axis = 0)[trials-1]}')
     bounds = np.array([
-        [0.0015, 50], 
-        [0, 1], 
-        [1e-3, 10], 
-        [0, 1], 
+        [0.0015, 50],
+        [0, 1],
+        [1e-3, 10],
+        [0, 1],
         [0, 10],
         [0, 1]
         ])
 
-    from scipy.optimize import minimize
-    nll = minimize(
-        nLL_ql_gen, 
-        x0, 
-        ([a, r, block_info], arms), 
-        method = 'L-BFGS-B',
-        bounds = bounds,
-        options = {'disp' : True}
-        )
+    # from scipy.optimize import minimize
+    # nll = minimize(
+    #     nLL_ql_gen, 
+    #     x0, 
+    #     ([a, r, block_info], arms), 
+    #     method = 'L-BFGS-B',
+    #     bounds = bounds,
+    #     options = {'disp' : True}
+    #     )
 
 
 
