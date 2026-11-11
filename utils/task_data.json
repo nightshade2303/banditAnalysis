@@ -48,6 +48,12 @@
     { "after": "2025-11-27", "animal": "Whismur", "task": "dms" },
     { "after": "2025-10-08", "animal": "Xerneas", "task": "oe_implant" },
     { "after": "2025-11-27", "animal": "Yamper", "task": "dls" },
-    { "after": "2025-11-27", "animal": "Zorua", "task": "dls" }
+    { "after": "2025-11-27", "animal": "Zorua", "task": "dls" },
+    { "after": "2026-04-08", "animal": "HSB_F_006", "task": "ph_implant"},
+    { "after": "2026-04-09", "animal": "HSB_F_007", "task": "ph_implant"},
+    { "after": "2026-04-02", "animal": "HSB_F_008", "task": "ph_implant"},
+    { "after": "2026-04-03", "animal": "HSB_F_009", "task":"ph_implant"},
+    { "after": "2026-04-17", "animal": "HSB_F_010", "task":"ph_implant"},
+    { "after": "2026-04-22", "animal": "HSB_F_011", "task":"ph_implant"}
   ]
 }

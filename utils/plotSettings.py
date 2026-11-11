@@ -1,21 +1,26 @@
 # generic plot settings
+import os
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import seaborn as sns
+
+from utils.config import DATA_DIR, FIG_DIR
 
 sns.set_theme()
 sns.set_style("ticks")
 sns.set_context("notebook")
-sns.despine()
 
 # set the font!
 from matplotlib import font_manager
 
 font_path = 'C:/Windows/Fonts/Inter-Light.ttf'  # Your font path goes here
-font_manager.fontManager.addfont(font_path)
-prop = font_manager.FontProperties(fname=font_path)
+if os.path.exists(font_path):  # otherwise matplotlib's default font is used
+    font_manager.fontManager.addfont(font_path)
+    prop = font_manager.FontProperties(fname=font_path)
 
-plt.rcParams['font.family'] = 'sans-serif'
-plt.rcParams['font.sans-serif'] = prop.get_name()
+    plt.rcParams['font.family'] = 'sans-serif'
+    plt.rcParams['font.sans-serif'] = prop.get_name()
 
 # despine 
 plt.rcParams['axes.spines.right'] = False
@@ -302,3 +307,28 @@ def get_parula_cmap():
 
     parula_map = LinearSegmentedColormap.from_list('parula', cm_data)
     return parula_map
+
+# colours and labels of the paper figures
+COHORT_STYLE = {'unstr': {'color': 'xkcd:barney purple', 'label': 'Uncorrelated'},
+                'str': {'color': 'xkcd:emerald green', 'label': 'Correlated'}}
+REWARD_STYLE = {1: {'color': 'red', 'label': 'Rewarded'},
+                0: {'color': 'blue', 'label': 'Unrewarded'}}
+GROUP_STYLE = {'blocked': {'color': 'xkcd:barney purple', 'label': 'Blocked'},
+               'unblocked': {'color': 'xkcd:light purple', 'label': 'Unblocked'},
+               'cued': {'color': 'xkcd:pale purple', 'label': 'Cued'},
+               'uncued': {'color': 'xkcd:dark lavender', 'label': 'Uncued'}}
+
+def week_colors(n_weeks):
+    """Parula colours for weeks 1 to n_weeks; the last 10% (pale yellow) is left out so it shows on white."""
+    return get_parula_cmap()(np.linspace(0, 0.9, n_weeks))
+
+def save_figure(fig, name, source_data=None):
+    """Save fig as figs/output/<name>.svg and .png, and the plotted numbers as figs/intermediate/<name>.csv."""
+    FIG_DIR.mkdir(parents=True, exist_ok=True)
+    fig.savefig(FIG_DIR / f'{name}.svg')
+    fig.savefig(FIG_DIR / f'{name}.png', dpi=300)
+    if source_data is not None:
+        if isinstance(source_data, dict):  # one table per cohort
+            source_data = pd.concat(source_data, names=['cohort'])
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        source_data.to_csv(DATA_DIR / f'{name}.csv')

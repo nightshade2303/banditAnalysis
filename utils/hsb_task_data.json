@@ -1,0 +1,22 @@
+{
+  "bias_start_time":"18:59",
+  "base_task_map": {
+    "13": "unstr",
+    "12": "str"
+  },
+  "reset_day_count_on": ["ph_implant"],
+  "rules": [
+    { "after": "2026-04-08", "animal": "HSB_F_006", "task": "ph_implant" },
+    { "after": "2026-04-09", "animal": "HSB_F_007", "task": "ph_implant" },
+    { "after": "2026-04-02", "animal": "HSB_F_008", "task": "ph_implant" },
+    { "after": "2026-04-03", "animal": "HSB_F_009", "task": "ph_implant" },
+    { "after": "2026-04-17", "animal": "HSB_F_010", "task": "ph_implant" },
+    { "after": "2026-04-22", "animal": "HSB_F_011", "task": "ph_implant" }
+  ],
+  "bias_correction": {
+    "HSB_F_006": ["2026-01-28", "2026-01-29"],
+    "HSB_F_007": [{"from":"2026-01-28", "to":"2026-01-31"}],
+    "HSB_F_009": ["2026-01-28"],
+    "HSB_F_010": [{"from":"2026-01-28", "to":"2026-01-31"}]
+  }
+}

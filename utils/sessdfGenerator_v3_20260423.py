@@ -65,7 +65,7 @@ window = 7
 sessdf['rr'] = sessdf.groupby(['animal', 'session'], as_index = False).reward.rolling(window, center=True).mean().reward
 
 # window = 5
-# sessdf['entropy'] = (subset_df.groupby(['animal', 'session'], as_index = False)
+# sessdf['entropy'] = (sessdf.groupby(['animal', 'session'], as_index = False)
 #                      .port
 #                      .rolling(window, center=True)
 #                      .apply(lambda x: entropy(calc_prob(x), base = 2))

@@ -10,3 +10,5 @@ build/
 dist/
 __pycache__/
 .ipynb_checkpoints/
+figs/output/
+figs/intermediate/
