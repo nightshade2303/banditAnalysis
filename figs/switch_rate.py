@@ -1,4 +1,4 @@
-# Plot 3: switch rate across trials, uncorrelated (sessdf) vs correlated (hsb_data) rats, expert data.
+# Plot 3: switch rate across trials, uncorrelated (sessdf) vs correlated (hsbdf) rats, expert data.
 # A trial is a switch when the next choice in the session is a different port.
 # Run cell by cell, or from the repo root: python -m figs.switch_rate
 

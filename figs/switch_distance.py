@@ -1,5 +1,5 @@
 # Plot 4: switch distance (ports between the current and the next choice, on switch trials) across
-# trials, uncorrelated (sessdf) vs correlated (hsb_data) rats, expert data.
+# trials, uncorrelated (sessdf) vs correlated (hsbdf) rats, expert data.
 # Run cell by cell, or from the repo root: python -m figs.switch_distance
 
 # %% Load both cohorts

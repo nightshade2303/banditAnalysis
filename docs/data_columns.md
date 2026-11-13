@@ -7,20 +7,20 @@ This describes the trial tables made by [utils/load_data.py](../utils/load_data.
 | Cohort | `task` | Rats ([utils/cohorts.py](../utils/cohorts.py)) | Source |
 |---|---|---|---|
 | Uncorrelated environment | `unstr` | cued and uncued rats | sessdf csv, made by [trializer_v4_synced](trializer_v4_synced.md) |
-| Correlated environment | `str` | HSB_F_006 to HSB_F_014 | one csv per rat, from an older trializer (`trialstart`/`trialend` columns, no wrong-reward flag) |
+| Correlated environment | `str` | HSB_F_006 to HSB_F_014 | hsbdf csv (`HSBDF_PATH`), same format as sessdf |
 
 ## Sessions and blocks
 
 - `block_num`: block number from the source file, continuous across sessions.
-- `session`: consecutive blocks whose start times are at most 40 min apart (`add_block_groups` in [utils/dfLoading.py](../utils/dfLoading.py)), for both cohorts. For sessdf this replaces the csv's own `session` column (a 40-min gap between trials), which gives the same sessions except one.
+- `session`: consecutive blocks whose start times are at most 40 min apart, split also at any gap of more than 40 min between consecutive trials, even inside a block (`add_block_groups` in [utils/dfLoading.py](../utils/dfLoading.py)), for both cohorts. For sessdf this replaces the csv's own `session` column (a 40-min gap between trials), which gives the same sessions except one.
 - `block_group`: position of the block in its session; 1 is the first block.
 - `day_task`: 24-hour periods since the rat's first trial, starting at 1. Expert data are trials with `day_task > 30`.
 
 ## Cleaning
 
 1. sessdf: only task `unstr` and the cohort's rats are read; blocks with malformed reward probabilities are dropped (`read_df`).
-2. hsb: sessions after an implant (dates in [utils/task_data.json](../utils/task_data.json)) get task `ph_implant` and are not analysed.
-3. Whole sessions with any wrongly rewarded trial are dropped (`rewarded_by_wrong_port`, sessdf only because the hsb files have no such flag). The rat experienced those rewards, so the rest of the session is affected too.
+2. hsbdf: task 12 is `str`; sessions after an implant (dates in [utils/task_data.json](../utils/task_data.json)) get task `ph_implant` and are not analysed.
+3. Whole sessions with any wrongly rewarded trial are dropped (`rewarded_by_wrong_port`), in both cohorts. The rat experienced those rewards, so the rest of the session is affected too.
 4. Sessions with more than 10 duplicated trial rows are dropped, in both cohorts (`remove_sessions_with_duplicate_trials`).
 
 ## Columns of the trial tables
@@ -68,7 +68,7 @@ Each rat's curve is the mean over its blocks (over its sessions for the block 1 
 
 ## Chance levels
 
-- Reward rate: mean reward probability of the four ports in each block, averaged over each rat's blocks and then over rats.
+- Reward rate: the reward rate of random choices, i.e. the mean probability of the four ports, averaged with equal weight over the reward profiles the blocks can have (`CHANCE_REWARD` in [utils/chance_levels.py](../utils/chance_levels.py)). Every block uses the values (80, 46, 15, 10) or (80, 46, 46, 15) in some port order. Uncorrelated task: mean over the two value sets, 0.4225. Correlated blocks: mean over the four correlated profiles, 0.4225. Uncorrelated blocks given to correlated rats: mean over the other 32 port orders, 0.4056.
 - Switch distance: mean distance from the starting port to the other three ports (2 from ports 1 and 4, 4/3 from ports 2 and 3), averaged over the ports the rats switched from.
 - P(switch to distance d): the rat's switch rate times the fraction of the other three ports that are d ports from the starting port.
 

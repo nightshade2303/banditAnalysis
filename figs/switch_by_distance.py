@@ -1,5 +1,5 @@
 # Plot 7: probability of switching to a port at each distance after rewarded and unrewarded trials,
-# uncorrelated (sessdf) vs correlated (hsb_data) rats. First block of each session only (its first 100
+# uncorrelated (sessdf) vs correlated (hsbdf) rats. First block of each session only (its first 100
 # trials, blocks with at least 100 trials), expert data. Dashed lines: chance, i.e. the rat's switch rate
 # with the next port drawn at random from the other three.
 # Run cell by cell, or from the repo root: python -m figs.switch_by_distance

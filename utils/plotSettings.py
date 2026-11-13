@@ -311,6 +311,11 @@ def get_parula_cmap():
 # colours and labels of the paper figures
 COHORT_STYLE = {'unstr': {'color': 'xkcd:barney purple', 'label': 'Uncorrelated'},
                 'str': {'color': 'xkcd:emerald green', 'label': 'Correlated'}}
+# blocks by cohort and by the block's own reward profile (env): structured profile or not
+ENV_STYLE = {'pure_unstr': {'color': 'xkcd:barney purple', 'label': 'Pure uncorrelated'},
+             'str_in_unstr': {'color': 'xkcd:olive green', 'label': 'Correlated in uncorrelated'},
+             'pure_str': {'color': 'xkcd:emerald green', 'label': 'Pure correlated'},
+             'unstr_in_str': {'color': 'xkcd:lavender', 'label': 'Uncorrelated in correlated'}}
 REWARD_STYLE = {1: {'color': 'red', 'label': 'Rewarded'},
                 0: {'color': 'blue', 'label': 'Unrewarded'}}
 GROUP_STYLE = {'blocked': {'color': 'xkcd:barney purple', 'label': 'Blocked'},

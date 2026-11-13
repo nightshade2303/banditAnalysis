@@ -19,7 +19,8 @@ cohorts = {task: subset_trials(df, N_TRIALS, head_trials=N_TRIALS) for task, df 
 
 # %% Plot 5: transition matrices
 tms = {task: cohort_transition_matrix(df) for task, df in cohorts.items()}
-vmin = min(np.nanmin(np.where(tm > 0, tm, np.nan)) for tm, _ in tms.values())  # same log colour scale for both cohorts
+# vmin = min(np.nanmin(np.where(tm > 0, tm, np.nan)) for tm, _ in tms.values())  # same log colour scale for both cohorts
+vmin = 1e-2
 
 matrices = {}
 fig, axes = plt.subplots(1, 2, figsize=(10, 4))

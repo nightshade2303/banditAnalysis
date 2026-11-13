@@ -1,12 +1,10 @@
 """Load the two cohorts as trial tables with the same columns (see docs/data_columns.md)."""
 from functools import lru_cache
-from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 from utils.cohorts import COHORTS, GROUPS, UNBLOCKED
-from utils.config import EXPERT_AFTER_DAY, HSB_DIR, MAX_DUPLICATES, MIN_BLOCKS, N_TRIALS, RULES_PATH, SESSDF_PATH
+from utils.config import EXPERT_AFTER_DAY, HSBDF_PATH, MAX_DUPLICATES, MIN_BLOCKS, N_TRIALS, RULES_PATH, SESSDF_PATH
 from utils.dfLoading import (add_block_groups, add_day_task, add_shift_info, read_df,
                              remove_sessions_with_duplicate_trials, remove_sessions_with_wrong_rewards)
 from utils.trializer_v4 import apply_task_rules_from_json
@@ -18,7 +16,7 @@ COLUMNS = ['animal', 'task', 'env', 'day_task', 'week_task', 'datetime', 'sessio
 def load_sessdf(path=SESSDF_PATH, animals=COHORTS['unstr']):
     """Uncorrelated rats: their 'unstr' trials in sessdf (notebook cell 1).
 
-    Sessions come from add_block_groups, as for hsb_data. Sessions with any wrongly rewarded trial or
+    Sessions come from add_block_groups, as for hsbdf. Sessions with any wrongly rewarded trial or
     with more than MAX_DUPLICATES duplicated trial rows are dropped."""
     df = read_df(path, task_type=['unstr'], animals=animals).copy()
     df = add_block_groups(df).rename(columns={'trial_rewprob': 'rewprob'})
@@ -29,29 +27,31 @@ def load_sessdf(path=SESSDF_PATH, animals=COHORTS['unstr']):
     return add_shift_info(df)[COLUMNS]
 
 
-def load_hsb(hsb_dir=HSB_DIR, animals=COHORTS['str']):
-    """Correlated rats: one csv per rat (notebook cell 3). Post-implant sessions get task 'ph_implant'.
+STRUCTURED_PROFILES = ['[80 46 15 10]', '[46 80 46 15]', '[15 46 80 46]', '[10 15 46 80]']
 
-    Sessions with more than MAX_DUPLICATES duplicated trial rows are dropped."""
-    df = pd.concat([pd.read_csv(Path(hsb_dir) / f'{an}.csv').assign(animal=an) for an in animals],
-                   ignore_index=True)
-    # the csv's session column numbers blocks, and its task column says whether a block is structured
-    df = df.drop(columns='sess_block').rename(columns={'session': 'block_num', 'task': 'env'})
-    df['task'] = 'str'
-    df['trial'] = np.arange(len(df))
-    df['datetime'] = pd.to_datetime(df.eptime, unit='s')
-    df = add_block_groups(df).rename(columns={'sess_block': 'session'})
-    df['week_task'] = df.groupby(['animal', 'task'])['datetime'].transform(
-        lambda x: ((x - x.min()).dt.days // 7) + 1)
-    df = add_day_task(df)
+
+def load_hsbdf(path=HSBDF_PATH, animals=COHORTS['str']):
+    """Correlated rats from the single hsbdf csv (trializer_v4_synced, same format as sessdf).
+
+    Task 12 becomes 'str' and post-implant sessions 'ph_implant' (task_data.json). As for sessdf, sessions
+    with any wrongly rewarded trial or with more than MAX_DUPLICATES duplicated trial rows are dropped."""
+    df = pd.read_csv(path).drop(columns='Unnamed: 0')
+    df = df[df.animal.isin(animals)].rename(columns={'trial_rewprob': 'rewprob'})
+    df['datetime'] = pd.to_datetime(df.datetime)
     df = apply_task_rules_from_json(df, rules_path=RULES_PATH)
+    df = df[df.task == 'str'].copy()
+    df['env'] = df.rewprobfull.isin(STRUCTURED_PROFILES).map({True: 'str', False: 'unstr'})
+    df['week_task'] = df.groupby(['animal', 'task'])['datetime'].transform(lambda x: ((x - x.min()).dt.days // 7) + 1)
+    df = add_block_groups(df.reset_index(drop=True)).rename(columns={'sess_block': 'session'})
+    df = add_day_task(df)
+    df = remove_sessions_with_wrong_rewards(df)
     df = remove_sessions_with_duplicate_trials(df, max_duplicates=MAX_DUPLICATES, verbose=False)
     return add_shift_info(df)[COLUMNS]
 
 
 @lru_cache(maxsize=None)
 def _cohort_tables():
-    return {'unstr': load_sessdf(), 'str': load_hsb()}
+    return {'unstr': load_sessdf(), 'str': load_hsbdf()}
 
 
 def select_trials(df, task, after_day=EXPERT_AFTER_DAY, block_group=None):

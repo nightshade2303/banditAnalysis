@@ -5,7 +5,7 @@ REPO = Path(__file__).resolve().parents[1]
 
 # data
 SESSDF_PATH = Path('R:/behavioralData/processed/sessdf-2026-09-25.csv')  # uncorrelated rats
-HSB_DIR = Path('L:/4portProb_structured')                                  # correlated rats, one csv per rat
+HSBDF_PATH = Path('V:/processed/hsbdf-2026-11-11.csv')                     # correlated rats
 RULES_PATH = REPO / 'utils' / 'task_data.json'                             # lesion and implant dates
 FIG_DIR = REPO / 'figs' / 'output'                                         # figures
 DATA_DIR = REPO / 'figs' / 'intermediate'                                  # numbers behind each figure (csv)

@@ -1,5 +1,5 @@
 # Plot 8: switch distance after rewarded and unrewarded trials, uncorrelated (sessdf) vs correlated
-# (hsb_data) rats. First block of each session only (its first 100 trials, blocks with at least 100
+# (hsbdf) rats. First block of each session only (its first 100 trials, blocks with at least 100
 # trials), expert data. Dashed lines: chance distance for the ports the rats switched from.
 # Run cell by cell, or from the repo root: python -m figs.switch_distance_by_reward
 

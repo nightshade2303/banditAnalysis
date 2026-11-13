@@ -137,6 +137,11 @@ def add_block_groups(df):
     # next day within 40 min of the previous block's clock time was not a new session
     thing = df.groupby(['animal', 'task', 'block_num']).datetime.head(1).astype('datetime64[ns]').diff().dt.total_seconds()>2400
     df.loc[thing[thing == True].index, 'sess_block'] = 1
+    # also a new session at any gap > 40 min between consecutive trials, even inside a block (a block can
+    # carry on after the rat stopped, e.g. overnight); without this such breaks stayed inside one session
+    trial_gap = df.groupby(['animal', 'task']).datetime.transform(
+        lambda x: x.astype('datetime64[ns]').diff().dt.total_seconds()) > 2400
+    df.loc[trial_gap, 'sess_block'] = 1
     df['sess_block'] = df.groupby(['animal', 'task']).sess_block.cumsum()
     # Create a group identifier that increases every time sess_block == 1
     df['block_group'] = df.groupby(['animal', 'task', 'block_num']).ngroup()

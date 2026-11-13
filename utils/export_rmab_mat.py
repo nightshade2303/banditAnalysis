@@ -1,6 +1,9 @@
-# export sessdf (uncorrelated cohort) and hsb_data (structured cohort) to rMAB-style .mat files
+# export sessdf (uncorrelated cohort) and hsbdf (correlated cohort) to rMAB-style .mat files
 # mirrors collateRatMABData.m, plus a dayOfTraining field
-# usage: python utils/export_rmab_mat.py
+# data are loaded and cleaned as for the paper figures (utils/load_data.py, docs/data_columns.md): whole
+# sessions with a wrongly rewarded trial or > MAX_DUPLICATES duplicated rows are dropped; hsbdf keeps
+# task 12 ('str') trials before each rat's implant
+# usage: python -m utils.export_rmab_mat
 import os
 import sys
 
@@ -9,14 +12,8 @@ import pandas as pd
 from scipy.io import savemat
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils.dfLoading import read_df, add_block_groups
-from utils.trializer_v4 import apply_task_rules_from_json
+from utils.load_data import load_hsbdf, load_sessdf
 
-SESSDF_PATH = 'R:/behavioralData/processed/sessdf-2026-09-25.csv'
-HSB_DIR = r"L:\4portProb_structured"
-HSB_ANIMALS = ['HSB_F_006', 'HSB_F_007', 'HSB_F_008', 'HSB_F_009', 'HSB_F_010',
-               'HSB_F_011', 'HSB_F_012', 'HSB_F_013', 'HSB_F_014']
-RULES_PATH = r"C:\Users\dlab\banditAnalysis\utils\task_data.json"
 OUT_DIR = r"C:\Users\dlab\OneDrive - Indian Institute of Science\Data\matlab code\data"
 
 UNSTR_ANIMALS = ['test05022023', 'Blissey', 'Chikorita', 'Darkrai', 'Eevee',
@@ -32,47 +29,6 @@ MIN_TRIALS = 50  # minimum trials per session
 NARMS = 4
 FIELDS = ['ratName', 'weekOfTraining', 'dayOfTraining', 'task', 'rewardprobs', 'narms',
           'trialNums', 'choices', 'rewards', 'blockIDs', 'lesion']
-
-
-def add_day_task(df):
-    df['day_task'] = df.groupby('animal')['datetime'].transform(
-        lambda x: ((x - x.min()).dt.days) + 1
-    )
-    return df
-
-
-def load_sessdf():
-    # same steps as multiAnimalAnalysis.ipynb cell 0
-    # unstr only, so day_task counts days within the unstr task (unlike the notebook)
-    sessdf = read_df(SESSDF_PATH, task_type=['unstr'])
-    sessdf = add_block_groups(sessdf)
-    sessdf = sessdf[~(sessdf.rewarded_by_wrong_port == True)]
-    sessdf = add_day_task(sessdf)
-    sessdf = sessdf[~(sessdf.animal == 'Alakazam')]
-    return sessdf
-
-
-def load_hsb():
-    # same steps as multiAnimalAnalysis.ipynb cell 3
-    dfs = []
-    for an in HSB_ANIMALS:
-        df = pd.read_csv(os.path.join(HSB_DIR, an + '.csv'))
-        df['animal'] = an
-        dfs.append(df)
-    hsb_data = pd.concat(dfs).reset_index()
-    hsb_data['trial'] = np.arange(hsb_data.shape[0])
-    hsb_data['env'] = hsb_data['task']
-    hsb_data['task'] = 'str'
-    hsb_data['datetime'] = pd.to_datetime(hsb_data.eptime, unit='s')
-    hsb_data = hsb_data.rename(columns={'session': 'block_num'})
-    hsb_data = add_block_groups(hsb_data)
-    hsb_data = hsb_data.rename(columns={'sess_block': 'session'})
-    hsb_data['week_task'] = hsb_data.groupby(['animal', 'task'])['datetime'].transform(
-        lambda x: ((x - x.min()).dt.days // 7) + 1
-    )
-    hsb_data = add_day_task(hsb_data)
-    hsb_data = apply_task_rules_from_json(hsb_data, rules_path=RULES_PATH)
-    return hsb_data
 
 
 def parse_rewprob(col):
@@ -142,15 +98,13 @@ def build(df, task, lesion, animals=None, weeks=None):
 if __name__ == '__main__':
     stamp = pd.Timestamp.today().strftime('%Y%m%d')
 
-    sessdf = load_sessdf()
-    unstr = sessdf[sessdf.task == 'unstr']
-    rMABpre = build(unstr, '4ABunstr', 'pre', animals=UNSTR_ANIMALS)
+    sessdf = load_sessdf(animals=UNSTR_ANIMALS)
+    rMABpre = build(sessdf[sessdf.task == 'unstr'], '4ABunstr', 'pre', animals=UNSTR_ANIMALS)
     savemat(os.path.join(OUT_DIR, f'rMABpre_{stamp}.mat'), {'rMABpre': rMABpre}, do_compression=True)
     print(f'rMABpre: {rMABpre.shape[0]} animals')
 
-    hsb_data = load_hsb()
+    hsbdf = load_hsbdf()  # task 12 before the implant only
     # reference rMABstr file stores the struct under the variable name 'rMABpre'
-    # task rules relabel post-implant sessions as 'ph_implant'; keep pre-implant 'str' only
-    rMABstr = build(hsb_data[hsb_data.task == 'str'], '4ABstr', 'pre')
+    rMABstr = build(hsbdf, '4ABstr', 'pre')
     savemat(os.path.join(OUT_DIR, f'rMABstr_{stamp}.mat'), {'rMABpre': rMABstr}, do_compression=True)
     print(f'rMABstr: {rMABstr.shape[0]} animals')

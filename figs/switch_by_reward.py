@@ -1,5 +1,5 @@
 # Plot 6: probability of switching after rewarded and unrewarded trials, uncorrelated (sessdf) vs
-# correlated (hsb_data) rats. First block of each session only (its first 100 trials, blocks with at
+# correlated (hsbdf) rats. First block of each session only (its first 100 trials, blocks with at
 # least 100 trials), expert data.
 # Run cell by cell, or from the repo root: python -m figs.switch_by_reward
 

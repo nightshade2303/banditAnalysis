@@ -20,6 +20,7 @@ Each plot has a short script in [figs/](figs/), built on helpers in [utils/](uti
 | 8 Switch distance after rewarded and unrewarded trials, block 1 | [figs/switch_distance_by_reward.py](figs/switch_distance_by_reward.py) |
 | P(switch to each distance) whatever the outcome, block 1 | [figs/switch_by_distance.py](figs/switch_by_distance.py) |
 | Reward rate, switch rate and switch distance for weeks 1–8, block 1; sessions and rats per week | [figs/weekwise.py](figs/weekwise.py) |
+| Sessions per week per rat (UU, UB, SB): each of weeks 1–8, and pooled for weeks 1–8 and expert data | [figs/sessions_per_week.py](figs/sessions_per_week.py) |
 | Blocked vs unblocked and cued vs uncued rats, first block and every block | [figs/group_comparisons.py](figs/group_comparisons.py) |
 
 Create the environment with `conda env create -f environment-paper.yml`. From the repository root, run one script with `python -m figs.reward_rate`, or all of them with `python -m figs.make_all` (the data are read once). The scripts also run cell by cell in VS Code. Figures (.svg, .png) go to `figs/output/` and the numbers behind each figure (.csv) to `figs/intermediate/`.
