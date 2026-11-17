@@ -1,140 +1,97 @@
-from utils.opconNosepokeFunctions import *
-from utils.plotSettings import *
-animal = 'Vulpix'
-box = 8
-date = '2025-07-01'
-path = f"L:/4portProb/Box{box}/{animal}/"       # for any les animal
+# Choice raster of one rat's sessions (rodentBanditAnalysis.ipynb, choice raster cell), from the same cleaned
+# trial tables as the paper figures: sessdf for uncorrelated rats, hsbdf for correlated rats. All days, no
+# minimum session or block length; only sessions dropped by the loaders (wrongly rewarded or duplicated trials)
+# are missing. Bands: each port's reward probability in the block, shaded in the rat's dataset colour, or, with
+# COLOR_BY_ENV, in the colour of each block's own reward profile (BLOCK_STYLE: structured dark lime green,
+# shuffled wisteria).
+# Ticks: rewarded tall and black, unrewarded short and grey.
+# Run cell by cell, or from the repo root: python -m figs.raster_generator
 
-files = get_files(path)
-set_cwd(path)
-files = [file for file in files if (file >=f'{animal}-*.dat')]
-files.sort()
-print(files)
-list_sessionMarker = [13]
+# %% Settings
+ANIMAL = 'Vulpix'
+SESSIONS = (40, 40)   # first and last session to plot (inclusive), session numbers of the loaded table
+COLOR_BY_ENV = False
+FIG_WIDTH = 7         # inches
+# example sessions per cohort, (rat, session); None picks one (see the example cell)
+EXAMPLES = {'unstr': None, 'str': None}
 
-from utils.trializer_v4_synced import trializer_v4_synced
-sessdf = trializer_v4_synced(files, animal)
-sessdf['datetime'] = pd.to_datetime(sessdf.eptime, unit='s')
-SESSION_GAP_SEC = 40 * 60
+# %% Load the rat's trials
+import matplotlib.pyplot as plt
+import pandas as pd
 
-# if things look wonky maybe the data is not sorted!
-# (it should be though the dat files are sorted per animal)
-# sessdf = sessdf.sort_values(["animal", "eptime"]).copy()
-gap_sec = sessdf.groupby("animal")["eptime"].diff()
-new_session = gap_sec.isna() | (gap_sec > SESSION_GAP_SEC)
+from utils.cohorts import COHORTS, UNBLOCKED
+from utils.config import EXPERT_AFTER_DAY, N_TRIALS
+from utils.load_data import load_cohorts, load_hsbdf, load_sessdf
+from utils.plotSettings import COHORT_STYLE, save_figure
+from utils.raster import fit_legend, plot_raster
 
-# Session numbers per animal: 1, 2, 3, ...
-sessdf["session"] = new_session.groupby(sessdf["animal"]).cumsum().astype(int)
-sessdf.rename(columns={'trial_rewprob':'rewprob'}, inplace = True)
-# if you want to add block numbers, uncomment this section
-sessdf['sess_block'] = 0
-thing = sessdf.groupby(['animal', 'task', 'session']).datetime.head(1).astype('datetime64[ns]').diff().dt.seconds>2400
-sessdf.loc[thing[thing == True].index, 'sess_block'] = 1
-sessdf['sess_block'] = sessdf.groupby(['animal', 'task']).sess_block.cumsum()
+if ANIMAL in COHORTS['str']:
+    df, color = load_hsbdf(animals=[ANIMAL]), COHORT_STYLE['str']['color']
+elif ANIMAL in COHORTS['unstr'] + UNBLOCKED:
+    df, color = load_sessdf(animals=[ANIMAL]), COHORT_STYLE['unstr']['color']
+else:
+    raise ValueError(f"{ANIMAL} is not in COHORTS['str'], COHORTS['unstr'] or UNBLOCKED (utils/cohorts.py)")
+print(f'{ANIMAL}: {df.session.nunique()} sessions ({df.session.min()} to {df.session.max()}), {len(df)} trials')
 
-# this plots blockwise raster of choice
-import ipywidgets as widgets
-from IPython.display import display
-from matplotlib.patches import Rectangle
-from matplotlib import transforms
-# import matplotlib.pyplot as plt
-import seaborn as sns
 
-from matplotlib.patches import Patch
-from matplotlib.lines import Line2D
-import numpy as np
+def raster_figure(rows, color, color_by_env, env_style=None):
+    fig, ax = plt.subplots(figsize=(FIG_WIDTH, 2.2))
+    legend = plot_raster(ax, rows, color, color_by_env=color_by_env, env_style=env_style)
+    fit_legend(fig, legend, 2.2)
+    return fig
 
-band_cmap = 'Greys'       # any sequential matplotlib cmap, e.g. 'Oranges'
-band_range = (0.12, 0.65) # part of the cmap to use: lightest (lowest prob) -> darkest (highest prob)
-rect_alpha = 1.0          # opaque bands keep the shades distinct; lower range above instead of alpha to lighten
-r_tick_color = 'xkcd:red'       # rewarded: tall black tick
-nr_tick_color = 'xkcd:blue'   # unrewarded: short grey tick
-rew_lw, unrew_lw = 1.0, 1.0 # lw
-rew_h, unrew_h = 0.2, 0.2   # half-heights of the ticks
-scalebar_frac = 0.1   # scale bar is the largest 1/2/5 x 10^k trials that fits in this fraction of the visible x-range
 
-# one shade per reward probability, evenly spaced along the cmap so neighbouring probs are easy to tell apart
-rewprob_vals = sorted(sessdf['rewprob'].dropna().unique())
-shades = plt.get_cmap(band_cmap)(np.linspace(*band_range, len(rewprob_vals)))
-rew_palette = {p: c for p, c in zip(rewprob_vals, shades)}
+def source(rows):
+    return rows.set_index(['session', 'block_num', 'trial'])[['port', 'reward', 'rewprobfull', 'env']]
 
-def nice_length(span, frac=scalebar_frac):
-    # largest 1, 2 or 5 x 10^k that is <= frac * span
-    target = max(span * frac, 1)
-    mag = 10 ** np.floor(np.log10(target))
-    for m in (5, 2, 1):
-        if m * mag <= target:
-            return m * mag
-    return mag
 
-# Create a function to update the plot based on user input
-def update_plot(session_range):
-    sessdf_filtered = sessdf[sessdf['block_num'].between(*session_range)].copy()
-    fig, ax = plt.subplots(figsize=(14, 3))
-    # tick height encodes outcome, all centred on the port
-    rew = sessdf_filtered[sessdf_filtered['reward'] == 1]
-    unrew = sessdf_filtered[sessdf_filtered['reward'] == 0]
-    ax.vlines(rew['trial'], rew['port']-rew_h, rew['port']+rew_h, color=r_tick_color, lw=rew_lw, zorder=3)
-    ax.vlines(unrew['trial'], unrew['port']-unrew_h, unrew['port']+unrew_h, color=nr_tick_color, lw=unrew_lw, zorder=3)
+# %% Static figure of the chosen sessions
+rows = df[df.session.between(*SESSIONS)]
+fig = raster_figure(rows, color, COLOR_BY_ENV)
+name = f'raster_{ANIMAL}_sessions_{SESSIONS[0]}-{SESSIONS[1]}' + ('_by_env' if COLOR_BY_ENV else '')
+save_figure(fig, name, source_data=source(rows))
+print(f'{name}: {len(rows)} trials, {rows.block_num.nunique()} blocks')
 
-    last = sessdf.groupby('block_num')['trial'].max().to_list()
-    start = sessdf.groupby('block_num')['trial'].min().to_list()
-    # per-block list of reward probs for ports 1-4
-    block_probs = [[float(j) for j in i.strip('[]').split()] for i in sessdf.groupby('block_num').head(1).rewprobfull]
-    for ind, l in enumerate(last):
-        # background bands, slightly shorter than 1 so each port row has a white gap
-        for port, p in enumerate(block_probs[ind], start=1):
-            if p in rew_palette:
-                ax.add_patch(Rectangle((start[ind]-0.5, port-0.4), l-start[ind]+1, 0.8,
-                                       fc=rew_palette[p], alpha=rect_alpha, ec='none', zorder=0))
-        ax.axvline(l+0.5, color='white', lw=1, zorder=1)
+# %% Example session for each cohort: 4 blocks, 3 in the cohort's own (home) environment and 1 in the other (away)
+# environment, each block coloured by its block type. Candidates: expert sessions (day > EXPERT_AFTER_DAY) whose 4 blocks all
+# have at least N_TRIALS trials; the away block in the middle of the session (block 2 or 3) first, then the
+# shortest sessions. All candidates are saved in figs/intermediate/raster_example_candidates.csv.
+candidates = []
+for home, cohort_df in load_cohorts(after_day=0, min_blocks=None).items():
+    blocks = cohort_df.groupby(['animal', 'session', 'block_num']).agg(
+        env=('env', 'first'), n=('trial', 'size'), day=('day_task', 'first'), group=('block_group', 'first'))
+    blocks['away'] = blocks.env != home
+    s = blocks.groupby(['animal', 'session']).agg(blocks=('n', 'size'), away=('away', 'sum'), trials=('n', 'sum'),
+                                                  shortest=('n', 'min'), day=('day', 'first'))
+    s['away_block'] = blocks[blocks.away].reset_index('block_num').group.groupby(['animal', 'session']).first()
+    s = s[(s.blocks == 4) & (s.away == 1) & (s.day > EXPERT_AFTER_DAY) & (s.shortest >= N_TRIALS)].copy()
+    s['middle'] = s.away_block.isin([2, 3])
+    s = s.sort_values(['middle', 'trials'], ascending=[False, True]).assign(home=home)
+    candidates.append(s)
+    print(f'{home}: {len(s)} candidate sessions from {s.index.get_level_values(0).nunique()} rats')
 
-    ax.set_ylim(0.5, 4.5)
-    ax.invert_yaxis()   # port 1 on top
-    ax.set_yticks([1, 2, 3, 4], ['Port 1', 'Port 2', 'Port 3', 'Port 4'])
-    ax.tick_params(left=False)
-    ax.set_xticks([])
-    sns.despine(ax=ax, left=True, bottom=True)
+    rat, session = EXAMPLES[home] or s.index[0]
+    rows = cohort_df[(cohort_df.animal == rat) & (cohort_df.session == session)]
+    fig = raster_figure(rows, COHORT_STYLE[home]['color'], color_by_env=True)  # blocks in BLOCK_STYLE colours
+    name = f'raster_example_{home}_{rat}_session_{session}'
+    save_figure(fig, name, source_data=source(rows))
+    print(f'  {name}: {len(rows)} trials, away block = block {int(s.loc[(rat, session), "away_block"])}')
+pd.concat(candidates).to_csv('figs/intermediate/raster_example_candidates.csv')
 
-    # scale bar instead of an x-axis: x in data units, y in axes units, so it stays
-    # below the plot and is redrawn to a sensible length whenever you zoom or pan
-    trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
-    bar, = ax.plot([], [], color='k', lw=1.5, transform=trans, clip_on=False)
-    bar_label = ax.text(0, -0.1, '', transform=trans, ha='center', va='top', fontsize='small')
+# %% Interactive (notebook or interactive window only): browse the rat's sessions with a slider
+try:
+    from IPython import get_ipython
+    interactive = get_ipython() is not None
+except ImportError:
+    interactive = False
+if interactive:
+    import ipywidgets as widgets
+    from IPython.display import display
 
-    def update_scalebar(ax):
-        x0, x1 = ax.get_xlim()
-        n = nice_length(x1 - x0)
-        xs = x0 + 0.01 * (x1 - x0)
-        bar.set_data([xs, xs + n], [-0.05, -0.05])
-        bar_label.set_position((xs + n / 2, -0.1))
-        bar_label.set_text(f'{n:g} trial' + ('' if n == 1 else 's'))
+    def show(sessions):
+        raster_figure(df[df.session.between(*sessions)], color, COLOR_BY_ENV)
+        plt.show()
 
-    ax.callbacks.connect('xlim_changed', update_scalebar)
-    x_limit = (sessdf_filtered['trial'].min() - 0.5, sessdf_filtered['trial'].max() + 0.5)
-    ax.set_xlim(*x_limit)   # triggers update_scalebar
-
-    # single legend row above the plot: bands match the background, lines match the ticks
-    handles = [Patch(fc=c, alpha=rect_alpha, ec='none', label=f'{p:g}%') for p, c in rew_palette.items()]
-    outcome_handles = [Line2D([], [], color=r_tick_color, lw=rew_lw*1.5, label='Rewarded'),
-                       Line2D([], [], color=nr_tick_color, lw=unrew_lw*1.5, label='Unrewarded')]
-    ax.legend(handles=handles + outcome_handles, ncol=len(handles) + 2, loc='lower center',
-              bbox_to_anchor=(0.5, 1.02), frameon=False, handlelength=1.2, columnspacing=1)
-    plt.tight_layout()
-    plt.show()
-
-# Define the session range using a widget
-session_range_slider = widgets.IntRangeSlider(
-    value=[250, 300],
-    min=sessdf['block_num'].min(),
-    max=sessdf['block_num'].max(),
-    step=1,
-    description='Block Range:',
-    continuous_update=False
-)
-
-# Create an interactive plot using interactive
-interactive_plot = widgets.interactive(update_plot, session_range=session_range_slider)
-
-# Display the interactive plot
-display(interactive_plot)
+    slider = widgets.IntRangeSlider(value=SESSIONS, min=df.session.min(), max=df.session.max(), step=1,
+                                    description='Sessions:', continuous_update=False)
+    display(widgets.interactive(show, sessions=slider))

@@ -33,6 +33,8 @@ plt.rcParams['ytick.labelcolor'] = 'grey'
 # saving settings
 plt.rcParams['savefig.format'] = 'svg'
 plt.rcParams['savefig.transparent'] = True
+plt.rcParams['svg.fonttype'] = 'none'  # svg text stays text (editable), not paths; the font must be installed
+plt.rcParams['pdf.fonttype'] = 42      # same for pdf: embed TrueType fonts so text stays editable
 
 # font sizing
 plt.rcParams['xtick.labelsize'] = 'large'
@@ -311,11 +313,14 @@ def get_parula_cmap():
 # colours and labels of the paper figures
 COHORT_STYLE = {'unstr': {'color': 'xkcd:barney purple', 'label': 'Uncorrelated'},
                 'str': {'color': 'xkcd:emerald green', 'label': 'Correlated'}}
-# blocks by cohort and by the block's own reward profile (env): structured profile or not
-ENV_STYLE = {'pure_unstr': {'color': 'xkcd:barney purple', 'label': 'Pure uncorrelated'},
-             'str_in_unstr': {'color': 'xkcd:olive green', 'label': 'Correlated in uncorrelated'},
-             'pure_str': {'color': 'xkcd:emerald green', 'label': 'Pure correlated'},
-             'unstr_in_str': {'color': 'xkcd:lavender', 'label': 'Uncorrelated in correlated'}}
+# block types (the block's own reward profile): structured (one of the four correlated profiles) or shuffled
+BLOCK_STYLE = {'str': {'color': 'xkcd:dark lime green', 'label': 'Structured'},
+               'unstr': {'color': 'xkcd:wisteria', 'label': 'Shuffled'}}
+# blocks by cohort and by block type: home blocks in the environment colour, away blocks in the block-type colour
+ENV_STYLE = {'pure_unstr': {'color': COHORT_STYLE['unstr']['color'], 'label': 'Pure uncorrelated'},
+             'str_in_unstr': {'color': BLOCK_STYLE['str']['color'], 'label': 'Correlated in uncorrelated'},
+             'pure_str': {'color': COHORT_STYLE['str']['color'], 'label': 'Pure correlated'},
+             'unstr_in_str': {'color': BLOCK_STYLE['unstr']['color'], 'label': 'Uncorrelated in correlated'}}
 REWARD_STYLE = {1: {'color': 'red', 'label': 'Rewarded'},
                 0: {'color': 'blue', 'label': 'Unrewarded'}}
 GROUP_STYLE = {'blocked': {'color': 'xkcd:barney purple', 'label': 'Blocked'},

@@ -33,10 +33,11 @@ PANELS = {'uncorrelated_vs_correlated': [('cohort', 'unstr'), ('cohort', 'str')]
           'uncorrelated_cohort': [('env', 'pure_unstr'), ('env', 'str_in_unstr')],
           'correlated_cohort': [('env', 'pure_str'), ('env', 'unstr_in_str')]}
 blocks = {k: cohorts[task][cohorts[task].env == env] for k, (task, env) in ENV_BLOCKS.items()}
-style = {**{('cohort', t): s for t, s in COHORT_STYLE.items()}, **{('env', k): s for k, s in ENV_STYLE.items()}}
 data = {**{('cohort', t): df for t, df in cohorts.items()}, **{('env', k): df for k, df in blocks.items()}}
 curves = {key: smooth_curves(block_trial_matrix(df, 'reward')) for key, df in data.items()}
 
+# cohorts and home blocks in the environment colours, away blocks in the block-type colours (ENV_STYLE)
+style = {**{('cohort', t): s for t, s in COHORT_STYLE.items()}, **{('env', k): s for k, s in ENV_STYLE.items()}}
 fig, axes = plt.subplots(1, 3, figsize=(14, 4.5), sharey=True)
 for ax, keys in zip(axes, PANELS.values()):
     for key in keys:

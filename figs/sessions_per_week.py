@@ -84,3 +84,35 @@ for period, (datasets, title, show_min) in PERIODS.items():
     save_figure(fig, f'sessions_per_week_{period}', source_data=table)
     for k, s in table.items():
         print(period, k, len(s), s.per_week.describe()[['mean', '50%', 'min', 'max']].round(2).to_dict())
+
+# %% Expert data, all rats: total sessions after day EXPERT_AFTER_DAY. Rats left out of the expert plots
+# (MIN_BLOCKS or fewer blocks of at least N_TRIALS trials) are hatched; rats with no expert session show 0.
+# Mean, median and minimum are over all rats of the dataset.
+expert_all = load_datasets(min_blocks=None)
+expert_rats = {k: set(df.animal) for k, df in load_datasets().items()}
+fig, ax = plt.subplots(figsize=(16, 4.5))
+x0, ticks, names, table = 0, [], [], {}
+for k, df in expert_all.items():
+    s = (df.drop_duplicates(['animal', 'session']).groupby('animal').size()
+         .reindex(sorted(training[k].animal.unique()), fill_value=0).sort_values())
+    table[k] = s.to_frame('sessions').assign(in_expert_plots=s.index.isin(list(expert_rats[k])))
+    x = list(range(x0, x0 + len(s)))
+    for xi, (rat, n) in zip(x, s.items()):
+        kept = rat in expert_rats[k]
+        ax.bar(xi, n, 0.7, color=DATASETS[k] if kept else 'none', edgecolor=DATASETS[k], hatch=None if kept else '///')
+    ax.bar(0, 0, color=DATASETS[k], label=k)  # legend entry
+    lines = {'mean': (s.mean(), '-'), 'median': (s.median(), '--'), 'min': (s.min(), ':')}
+    for name, (y, ls) in lines.items():
+        ax.hlines(y, x0 - 0.4, x0 + len(s) - 0.6, color='k', ls=ls, lw=1.2)
+    ax.text(x0 + (len(s) - 1) / 2, 440, '\n'.join(f'{n} = {y:.0f}' for n, (y, _) in lines.items()),
+            ha='center', va='bottom', fontsize=8)
+    ticks += x; names += list(s.index)
+    x0 += len(s) + 2
+ax.bar(0, 0, color='none', edgecolor='grey', hatch='///', label='not in expert plots')
+ax.set_xticks(ticks, names, rotation=70, ha='right', fontsize=8)
+ax.set(ylabel='Sessions', title='Expert data: total sessions per rat', xlim=(-1, x0), ylim=(0, 520))
+ax.legend(frameon=False, loc='upper left', bbox_to_anchor=(1, 1))
+fig.tight_layout()
+save_figure(fig, 'sessions_total_expert', source_data=table)
+for k, t in table.items():
+    print('expert total', k, len(t), t.sessions.describe()[['mean', '50%', 'min', 'max']].round(1).to_dict())

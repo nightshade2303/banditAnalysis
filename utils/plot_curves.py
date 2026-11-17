@@ -1,6 +1,8 @@
 """Mean +- SEM across rats of trial-by-trial curves (rats x trials tables from utils/trial_curves.py)."""
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+from scipy.stats import mannwhitneyu
 
 from utils.trial_curves import segment_edges
 
@@ -49,6 +51,42 @@ def plot_block_segments(ax, curves, styles, segments, gap=2.5):
         cols = [i for i, (b, _, _) in enumerate(segments) if b == block]
         middle = (xmap(edges[cols[0]]) + xmap(edges[cols[-1] + 1] - 1)) / 2
         ax.text(middle, 1.01, f'Block {block}', transform=ax.get_xaxis_transform(), ha='center', va='bottom')
+
+
+def block_means(curves, segments, blocks=(1, 2)):
+    """Per rat, the mean over the trials of the 'first' segment of each block (unsmoothed rats x trials
+    from segment_matrix), e.g. trials 1-100 of block 1 and of block 2 for BLOCK_1_TO_2."""
+    edges = segment_edges(segments)
+    cols = {b: (edges[i], edges[i + 1]) for i, (b, which, _) in enumerate(segments) if which == 'first'}
+    return pd.DataFrame({f'Block {b}': curves.iloc[:, cols[b][0]:cols[b][1]].mean(axis=1) for b in blocks})
+
+
+def plot_block_bars(ax, means, styles):
+    """Bars (mean +- SEM across rats) grouped by block, one bar per cohort, with each rat's value as a dot.
+    means: {cohort: rats x blocks}, two cohorts. In each block the cohorts are compared with a Mann-Whitney U
+    test, whose p is written above the block. Returns the tests as a table."""
+    (c1, a), (c2, b) = list(means.items())[:2]
+    rng = np.random.default_rng(0)  # horizontal jitter of the dots
+    tests = []
+    for j, block in enumerate(a.columns):
+        for i, (cohort, m) in enumerate(means.items()):
+            x, v = j * (len(means) + 1) + i, m[block].dropna()
+            color = styles[cohort]['color']
+            ax.bar(x, v.mean(), 0.7, yerr=v.sem(), color=color, alpha=0.5, error_kw=dict(lw=1.5, capsize=0),
+                   label=styles[cohort]['label'] if j == 0 else None)
+            ax.scatter(x + rng.uniform(-0.15, 0.15, len(v)), v, s=10, color=color, zorder=3, linewidths=0)
+        u = mannwhitneyu(a[block].dropna(), b[block].dropna())
+        tests.append(dict(block=block, comparison=f'{c1} vs {c2}', n=f'{a[block].notna().sum()}, {b[block].notna().sum()}',
+                          U=u.statistic, p=u.pvalue))
+        ax.text(j * (len(means) + 1) + (len(means) - 1) / 2, 1.0, _p_text(u.pvalue), transform=ax.get_xaxis_transform(),
+                ha='center', va='bottom', fontsize=9)
+    centres = [j * (len(means) + 1) + (len(means) - 1) / 2 for j in range(len(a.columns))]
+    ax.set_xticks(centres, list(a.columns))
+    return pd.DataFrame(tests)
+
+
+def _p_text(p):
+    return f'p = {p:.3f}' if p >= 0.001 else 'p < 0.001'
 
 
 def _draw_axis_breaks(ax, centres, gap):
