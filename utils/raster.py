@@ -7,12 +7,11 @@ from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch, Rectangle
 
-from utils.plotSettings import BLOCK_STYLE, COHORT_STYLE
+from utils.config import PORTS
+from utils.plotSettings import BLOCK_STYLE
+from utils.task_profiles import REWARD_PERCENTS, parse_profile
 
-PROBS = [10, 15, 46, 80]  # reward % used in the task; a probability gets the same shade in every plot
-# part of the white -> colour map used (lowest prob -> highest prob), per colour
-BAND_RANGE = {COHORT_STYLE['unstr']['color']: (0.25, 1.0), COHORT_STYLE['str']['color']: (0.25, 1.0)}
-DEFAULT_BAND_RANGE = (0.25, 1.0)
+SHADE_RANGE = (0.25, 1.0)  # part of the white -> colour map used, lowest -> highest reward %
 RECT_ALPHA = 0.7
 REW_COLOR, UNREW_COLOR = 'k', '0.4'
 REW_LW, UNREW_LW = 0.8, 0.8   # about one trial wide at ~600 trials in 7 inches, so ticks don't merge
@@ -21,11 +20,13 @@ SCALEBAR_FRAC = 0.1           # scale bar: largest 1/2/5 x 10^k trials within th
 
 
 def shades(color):
-    """{reward %: shade} from white to color, placed along the colour's BAND_RANGE in proportion to the reward %."""
-    lo, hi = BAND_RANGE.get(color, DEFAULT_BAND_RANGE)
+    """{reward %: shade} from white to color: each reward % of the task (REWARD_PERCENTS) placed along
+    SHADE_RANGE in proportion to its value, so a reward % gets the same shade in every plot."""
+    lo, hi = SHADE_RANGE
     cmap = LinearSegmentedColormap.from_list('band', ['white', color])
-    frac = (np.array(PROBS) - min(PROBS)) / (max(PROBS) - min(PROBS))
-    return dict(zip(PROBS, cmap(lo + frac * (hi - lo))))
+    percents = np.array(REWARD_PERCENTS)
+    frac = (percents - percents.min()) / (percents.max() - percents.min())
+    return dict(zip(REWARD_PERCENTS, cmap(lo + frac * (hi - lo))))
 
 
 def nice_length(span, frac=SCALEBAR_FRAC):
@@ -59,7 +60,7 @@ def plot_raster(ax, trials, color, color_by_env=False, env_style=None):
         if c not in palettes:
             palettes[c] = shades(c)
             used.append(b.env if color_by_env else None)
-        for port, p in enumerate((float(x) for x in b.probs.strip('[]').split()), start=1):
+        for port, p in zip(PORTS, parse_profile(b.probs)):
             if p in palettes[c]:  # bands a little shorter than 1, so port rows are separated by white
                 ax.add_patch(Rectangle((b.start - 0.5, port - 0.4), b.end - b.start + 1, 0.8,
                                        fc=palettes[c][p], alpha=RECT_ALPHA, ec='none', zorder=0))
@@ -67,7 +68,7 @@ def plot_raster(ax, trials, color, color_by_env=False, env_style=None):
 
     ax.set_ylim(0.5, 4.5)
     ax.invert_yaxis()  # port 1 on top
-    ax.set_yticks([1, 2, 3, 4], [f'Port {p}' for p in range(1, 5)])
+    ax.set_yticks(PORTS, [f'Port {p}' for p in PORTS])
     ax.tick_params(left=False, labelsize='small')
     ax.set_xticks([])
     for side in ['top', 'right', 'left', 'bottom']:
@@ -117,3 +118,38 @@ def _add_scalebar(ax):
         label.set_text(f'{n:g} trial' + ('' if n == 1 else 's'))
 
     ax.callbacks.connect('xlim_changed', update)
+
+
+def example_sessions(trials, home, n_blocks, min_trials, after_day, distinct_best=False, min_block_reward=None):
+    """Candidate example sessions of one cohort. Returns (sessions, blocks):
+    sessions: one row per candidate (animal, session), best first, with its number of blocks, away blocks,
+    trials, shortest block, day, lowest block reward rate and away_block (position of the away block);
+    blocks: one row per block of the cohort (env, trials, reward rate, port of the highest reward %, ...).
+
+    trials: the cohort's trial table; home: its environment ('str' or 'unstr'). A candidate has n_blocks blocks,
+    exactly one of them away (env != home), every block at least min_trials trials long, and day > after_day.
+    distinct_best: also, consecutive blocks never have their highest reward % at the same port.
+    min_block_reward: also, the rat's reward rate is above this in every block.
+    Order: sessions whose away block is in the middle (not first or last) first, then the shortest."""
+    blocks = trials.groupby(['animal', 'session', 'block_num']).agg(
+        env=('env', 'first'), n=('trial', 'size'), day=('day_task', 'first'), group=('block_group', 'first'),
+        profile=('rewprobfull', 'first'), reward_rate=('reward', 'mean'))
+    blocks['away'] = blocks.env != home
+    blocks['best_port'] = blocks.profile.map(lambda p: np.argmax(parse_profile(p)) + 1 if isinstance(p, str)
+                                             else np.nan)
+    blocks['same_best'] = blocks.groupby(['animal', 'session']).best_port.diff().eq(0)
+
+    sessions = blocks.groupby(['animal', 'session']).agg(
+        blocks=('n', 'size'), away=('away', 'sum'), trials=('n', 'sum'), shortest=('n', 'min'),
+        day=('day', 'first'), same_best=('same_best', 'any'), min_reward_rate=('reward_rate', 'min'))
+    sessions['away_block'] = blocks[blocks.away].reset_index('block_num').group.groupby(['animal', 'session']).first()
+
+    keep = ((sessions.blocks == n_blocks) & (sessions.away == 1) & (sessions.day > after_day)
+            & (sessions.shortest >= min_trials))
+    if distinct_best:
+        keep &= ~sessions.same_best
+    if min_block_reward is not None:
+        keep &= sessions.min_reward_rate > min_block_reward
+    sessions = sessions[keep].copy()
+    sessions['middle'] = sessions.away_block.between(2, n_blocks - 1)
+    return sessions.sort_values(['middle', 'trials'], ascending=[False, True]), blocks

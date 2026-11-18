@@ -1,3 +1,4 @@
+"""Older per-animal helpers used by the analysis notebooks; the paper figures use utils/trial_curves.py."""
 import numpy as np
 import pandas as pd
 def get_sessionwise_averages(df, mask = None, metric = None, tasks = None):
@@ -5,8 +6,8 @@ def get_sessionwise_averages(df, mask = None, metric = None, tasks = None):
     Inputs: df, mask, metric (string), tasks (list)
     Output: Animal-wise session-averaged metric_dict
     '''
-    if metric is None:
-        assert isinstance(metric, str), "pass a metric column"
+    if not isinstance(metric, str):
+        raise ValueError('pass a metric column name')
 
     if tasks is not None:
         assert isinstance(tasks, list), "tasks should be list"
@@ -30,8 +31,8 @@ def get_sessionwise_metric(df, mask = None, metric = None, tasks = None):
     Inputs: df, mask, metric (string), tasks (list)
     Output: Animal-wise metric_dict
     '''
-    if metric is None:
-        assert isinstance(metric, str), "pass a metric column"
+    if not isinstance(metric, str):
+        raise ValueError('pass a metric column name')
 
     if tasks is not None:
         assert isinstance(tasks, list), "tasks should be list"

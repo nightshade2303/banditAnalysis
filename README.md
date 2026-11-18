@@ -9,9 +9,11 @@ Most figures/script are derivatives of a largely functional programming style. C
 
 Each plot has a short script in [figs/](figs/), built on helpers in [utils/](utils/). Data paths and analysis settings (expert cutoff, trials per block, smoothing, mean or median across rats) are in [utils/config.py](utils/config.py), the rats of each cohort in [utils/cohorts.py](utils/cohorts.py). [docs/data_columns.md](docs/data_columns.md) describes the trial tables, the cleaning and every measure.
 
+[docs/figures.md](docs/figures.md) describes every figure: what it shows, the data behind it and how each number is computed.
+
 | Plot | Script |
 |---|---|
-| 1–2 Reward rate: every block; block 1 → block 2 | [figs/reward_rate.py](figs/reward_rate.py) |
+| 1–2 Reward rate: every block; structured blocks and shuffled blocks by environment; block 1 → block 2 | [figs/reward_rate.py](figs/reward_rate.py) |
 | 3 Switch rate: every block; block 1 → block 2; block 1 vs block 2 per rat (trials 1–100) | [figs/switch_rate.py](figs/switch_rate.py) |
 | 4 Switch distance: every block; block 1 → block 2; block 1 vs block 2 per rat (trials 1–100) | [figs/switch_distance.py](figs/switch_distance.py) |
 | 5 Transition matrices, and rewarded − unrewarded | [figs/transition_matrices.py](figs/transition_matrices.py) |
@@ -20,9 +22,11 @@ Each plot has a short script in [figs/](figs/), built on helpers in [utils/](uti
 | 8 Switch distance after rewarded and unrewarded trials, block 1 | [figs/switch_distance_by_reward.py](figs/switch_distance_by_reward.py) |
 | P(switch to each distance) whatever the outcome, block 1 | [figs/switch_by_distance.py](figs/switch_by_distance.py) |
 | Reward rate, switch rate and switch distance for weeks 1–8, block 1; sessions and rats per week | [figs/weekwise.py](figs/weekwise.py) |
+| Reward rate, switch rate and switch distance over the first 300 trials of each session, per rat: box plots, uncorrelated vs correlated (permutation test, 10,000 permutations, [stats/permutation_tests.py](stats/permutation_tests.py)) | [figs/cohort_first_300.py](figs/cohort_first_300.py) |
 | Choice raster of one rat's sessions (rat and sessions set at the top; optional slider), and one example session per cohort with 3 home blocks and 1 away block coloured by environment; not run by make_all | [figs/raster_generator.py](figs/raster_generator.py) |
 | Example reward profiles (reward % at ports 1–4): the 4 structured and 4 of the 32 shuffled profiles | [figs/reward_profiles.py](figs/reward_profiles.py) |
-| Schematic: share of structured and shuffled blocks in the correlated and uncorrelated environments (alluvial plot, shares set at the top) | [figs/env_proportions.py](figs/env_proportions.py) |
+| Schematic: share of structured and shuffled blocks in the correlated and uncorrelated environments (alluvial plot, shares set at the top), with example reward profiles beside each block type | [figs/env_proportions.py](figs/env_proportions.py) |
+| Correlation between the ports' reward probabilities in the correlated and uncorrelated environments, and in structured and shuffled blocks, from the task design | [figs/env_correlations.py](figs/env_correlations.py) |
 | Sessions per week per rat (UU, UB, SB): each of weeks 1–8, and pooled for weeks 1–8 and expert data; total expert sessions per rat | [figs/sessions_per_week.py](figs/sessions_per_week.py) |
 | Blocked vs unblocked and cued vs uncued rats, first block and every block | [figs/group_comparisons.py](figs/group_comparisons.py) |
 

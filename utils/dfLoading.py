@@ -1,81 +1,65 @@
-# utility functions
+"""Loading and cleaning helpers for the trial tables (sessdf, hsbdf).
+
+Used by the paper figures (through utils/load_data.py): read_df, subset_trials, add_block_groups, add_day_task,
+add_shift_info, remove_sessions_with_wrong_rewards, remove_sessions_with_duplicate_trials. The other functions
+(expert_sessions, remove_duplicates, describe_dataset) are kept for the analysis notebooks.
+
+add_block_groups, add_day_task and add_shift_info add columns to the table they are given (in place) and return
+it, as the notebooks expect.
+"""
 import pandas as pd
 
-# read cleaned dataframe with no duplicates+unstructured data only
-def read_df(filepath, task_type = None, animals = None):
+SESSION_BIN = 50          # sess_bin: sessions are numbered in bins of this many (used by expert_sessions)
+SESSION_GAP_S = 40 * 60   # a gap longer than this (seconds) between blocks or trials starts a new session
+# the four structured (correlated) reward profiles, % at ports 1-4 as written in rewprobfull
+STRUCTURED_PROFILES = ['[80 46 15 10]', '[46 80 46 15]', '[15 46 80 46]', '[10 15 46 80]']
+# reward profiles of an older assignment of 'structured' sessions; kept as the 'assigned' column for the notebooks
+ASSIGNED_STR_PROFILES = ['[10 15 46 80]', '[10 15 80 46]', '[10 46 80 15]', '[10 80 46 15]', '[15 10 46 80]',
+                         '[15 10 80 46]', '[15 46 46 80]', '[15 46 80 10]', '[15 46 80 46]', '[15 80 46 10]',
+                         '[15 80 46 46]', '[46 46 80 15]', '[46 80 10 15]', '[46 80 15 10]', '[46 80 46 15]',
+                         '[80 46 10 15]', '[80 46 15 10]', '[80 46 46 15]']
+# malformed reward profiles (test or broken blocks), dropped on reading
+BAD_PROFILES = ['[ 20  20  20 100]', '[0 0 0 0]', '[0]', '[0 0]', '[1000   80]', '[30]', '[40]', '[70]']
+
+
+def read_df(filepath, task_type=None, animals=None):
+    """Read a sessdf csv. task_type: list of tasks to keep (default: 'unstr' only); animals: rats to keep (the
+    file is then read in chunks, as it is large). Blocks with a malformed reward profile are dropped. Adds:
+    sess_bin (session // SESSION_BIN + 1), week_task (weeks since the rat's first trial of the task), env
+    ('str' if the block's profile is one of STRUCTURED_PROFILES, else 'unstr') and assigned (older
+    assignment, see ASSIGNED_STR_PROFILES)."""
     if animals is None:
         df = pd.read_csv(filepath)
     else:
-        # the full file is large, so read it in chunks and keep only these animals
-        chunks = pd.read_csv(filepath, chunksize = 2_000_000)
+        chunks = pd.read_csv(filepath, chunksize=2_000_000)
         df = pd.concat([chunk[chunk.animal.isin(animals)] for chunk in chunks])
-    df.drop(columns = 'Unnamed: 0', inplace = True)
+    df = df.drop(columns='Unnamed: 0')
 
-    # add sess bin info and week info
-    bin_size = 50
     df['sess_bin'] = df.groupby(['animal', 'task'])['session'].transform(
-        lambda x: pd.cut(
-            x, 
-            bins=range(0, x.max() + bin_size, bin_size), 
-            labels=False, 
-            right=False
-            ) + 1)
-    # # ## week relative to each animal-task first date
+        lambda s: pd.cut(s, bins=range(0, s.max() + SESSION_BIN, SESSION_BIN), labels=False, right=False) + 1)
     df['datetime'] = pd.to_datetime(df['datetime'])
-    df['week_task'] = df.groupby(['animal', 'task'])['datetime'].transform(
-        lambda x: ((x - x.min()).dt.days // 7) + 1
-    )
-    l_str_sess = [
-        '[10 15 46 80]',
-        '[10 15 80 46]',
-        '[10 46 80 15]',
-        '[10 80 46 15]',
-        '[15 10 46 80]',
-        '[15 10 80 46]', 
-        '[15 46 46 80]', 
-        '[15 46 80 10]',
-        '[15 46 80 46]',
-        '[15 80 46 10]',
-        '[15 80 46 46]',
-        '[46 46 80 15]',
-        '[46 80 10 15]',
-        '[46 80 15 10]',
-        '[46 80 46 15]',
-        '[80 46 10 15]',
-        '[80 46 15 10]',
-        '[80 46 46 15]'
-    ]
-    df['assigned'] = df.rewprobfull.isin(l_str_sess).map({True: 'str', False: 'unstr'})
+    df['week_task'] = df.groupby(['animal', 'task'])['datetime'].transform(lambda t: (t - t.min()).dt.days // 7 + 1)
+    df['assigned'] = df.rewprobfull.isin(ASSIGNED_STR_PROFILES).map({True: 'str', False: 'unstr'})
+    df['env'] = df.rewprobfull.isin(STRUCTURED_PROFILES).map({True: 'str', False: 'unstr'})
+    df = df[~df.rewprobfull.isin(BAD_PROFILES)]
 
-    struc = ['[80 46 15 10]', '[46 80 46 15]', '[15 46 80 46]', '[10 15 46 80]']
-    df['env'] = df.rewprobfull.isin(struc).map({True: 'str', False: 'unstr'})
+    if task_type is None:
+        return df[df.task == 'unstr']
+    assert isinstance(task_type, list), 'task_type should be a list'
+    return df[df.task.isin(task_type)]
 
-    exclude = ['[ 20  20  20 100]', '[0 0 0 0]', '[0]', '[0 0]',
-        '[1000   80]', '[30]', '[40]', '[70]']
-    df = df[~df.rewprobfull.isin(exclude)]
 
-    if task_type is not None:
-        assert isinstance(task_type, list), "task_type should be a list"
-        df = df[df.task.isin(task_type)]
-    else:
-        df = df[df.task == 'unstr']
-        assert df.task.unique().shape[0]==1
-    return df
-
-# for given df, reduce it to certain number of trials for all the given sessions
-def subset_trials(df, trialsinsess, head_trials = None, tail_trials = None):
-    subset = df.groupby(['animal','block_num']).filter(lambda x: x.reward.size >= trialsinsess)
-    if head_trials is not None:
-        assert head_trials<=trialsinsess
-        assert isinstance(head_trials, int), "num_trials should be int"
-        subset = subset.groupby(['animal', 'block_num']).head(head_trials)
-
-    if tail_trials is not None:
-        assert tail_trials<=trialsinsess
-        assert isinstance(tail_trials, int), "num_trials should be int"
-        subset = subset.groupby(['animal', 'block_num']).tail(tail_trials)
-    
+def subset_trials(df, trialsinsess, head_trials=None, tail_trials=None):
+    """Blocks with at least `trialsinsess` trials (despite the name, trials in the block), optionally cut to
+    their first head_trials and/or last tail_trials trials."""
+    blocks = df.groupby(['animal', 'block_num'])
+    subset = df[blocks.reward.transform('size') >= trialsinsess]
+    for n, cut in [(head_trials, 'head'), (tail_trials, 'tail')]:
+        if n is not None:
+            assert isinstance(n, int) and n <= trialsinsess, f'{cut}_trials must be an int <= trialsinsess'
+            subset = getattr(subset.groupby(['animal', 'block_num']), cut)(n)
     return subset
+
 
 def expert_sessions(df, sess_bin = 4):
     return df[df.sess_bin>=4]
@@ -128,28 +112,25 @@ def describe_dataset(df, mask=None):
     return df.groupby(['animal', 'session'], as_index = False)['trial'].count().describe()
 
 def add_block_groups(df):
-    # make a column called sess_block
-    # if session changes within 40min,  number +1
-    # first reset index or everything will go crazy
-    # df = df.reset_index()
-    df['sess_block'] = 0
-    # total_seconds, not .dt.seconds: .dt.seconds drops whole days, so a block starting the
-    # next day within 40 min of the previous block's clock time was not a new session
-    thing = df.groupby(['animal', 'task', 'block_num']).datetime.head(1).astype('datetime64[ns]').diff().dt.total_seconds()>2400
-    df.loc[thing[thing == True].index, 'sess_block'] = 1
-    # also a new session at any gap > 40 min between consecutive trials, even inside a block (a block can
-    # carry on after the rat stopped, e.g. overnight); without this such breaks stayed inside one session
-    trial_gap = df.groupby(['animal', 'task']).datetime.transform(
-        lambda x: x.astype('datetime64[ns]').diff().dt.total_seconds()) > 2400
-    df.loc[trial_gap, 'sess_block'] = 1
-    df['sess_block'] = df.groupby(['animal', 'task']).sess_block.cumsum()
-    # Create a group identifier that increases every time sess_block == 1
-    df['block_group'] = df.groupby(['animal', 'task', 'block_num']).ngroup()
+    """Split each rat's trials into sessions and number the blocks within each session.
 
-    df['block_group'] = (
-        df.groupby(['animal', 'task', 'sess_block'])['block_num']
-        .transform(lambda x: pd.factorize(x)[0] + 1)
-    )
+    A new session starts at a block that begins more than SESSION_GAP_S after the previous block began, and at
+    any gap of more than SESSION_GAP_S between consecutive trials, even inside a block (a block can carry on
+    after the rat stopped, e.g. overnight). Adds sess_block (session number, counting from 0 per rat and task)
+    and block_group (position of the block in its session, 1 = first). df must have a unique index."""
+    def gap_s(times):  # seconds since the previous time; total_seconds keeps whole days, unlike .dt.seconds
+        return times.astype('datetime64[ns]').diff().dt.total_seconds()
+
+    block_start = df.groupby(['animal', 'task', 'block_num']).datetime.head(1)
+    new_block_session = gap_s(block_start) > SESSION_GAP_S
+    new_trial_session = df.groupby(['animal', 'task']).datetime.transform(gap_s) > SESSION_GAP_S
+
+    df['sess_block'] = 0
+    df.loc[new_block_session[new_block_session].index, 'sess_block'] = 1
+    df.loc[new_trial_session, 'sess_block'] = 1
+    df['sess_block'] = df.groupby(['animal', 'task']).sess_block.cumsum()
+    df['block_group'] = (df.groupby(['animal', 'task', 'sess_block'])['block_num']
+                         .transform(lambda blocks: pd.factorize(blocks)[0] + 1))
     return df
 
 def _bias_dates(cfg):
@@ -219,13 +200,16 @@ def add_day_task(df, rules_path=None):
     return df
 
 def add_shift_info(df):
-    df['choice_t1'] = df.groupby(['animal','session']).port.shift(-1)
-    df['choice_t2'] = df.groupby(['animal','session']).port.shift(-2)
-    df.loc[(df.choice_t1 == 0), 'choice_t1'] = df.loc[(df.choice_t1 == 0), 'port']
-    df.loc[(df.choice_t2 == 0), 'choice_t2'] = df.loc[(df.choice_t2 == 0), 'port']
-    df['disp'] = df['choice_t1']-df['port']
-
-    # 1 = switch, 0 = stay, NaN = no next trial in the session
+    """Next choices and switches, within each session. Adds:
+    choice_t1, choice_t2: port chosen 1 and 2 trials later (a recorded port 0 counts as the current port);
+    disp: choice_t1 - port (signed switch distance, 0 on a stay);
+    shift_t0: 1 if choice_t1 is a different port (switch), 0 if the same (stay), NaN on the session's last trial;
+    shift_t1: the same for choice_t2."""
+    for col, lag in [('choice_t1', 1), ('choice_t2', 2)]:
+        df[col] = df.groupby(['animal', 'session']).port.shift(-lag)
+        no_port = df[col] == 0
+        df.loc[no_port, col] = df.loc[no_port, 'port']
+    df['disp'] = df['choice_t1'] - df['port']
     df['shift_t0'] = (df['choice_t1'] != df['port']).astype(float).where(df['choice_t1'].notna())
     df['shift_t1'] = (df['choice_t2'] != df['port']).astype(float).where(df['choice_t2'].notna())
     return df

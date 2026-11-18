@@ -5,8 +5,9 @@ import pandas as pd
 
 from utils.cohorts import COHORTS, GROUPS, UNBLOCKED
 from utils.config import EXPERT_AFTER_DAY, HSBDF_PATH, MAX_DUPLICATES, MIN_BLOCKS, N_TRIALS, RULES_PATH, SESSDF_PATH
-from utils.dfLoading import (add_block_groups, add_day_task, add_shift_info, read_df,
-                             remove_sessions_with_duplicate_trials, remove_sessions_with_wrong_rewards)
+from utils.dfLoading import (STRUCTURED_PROFILES, add_block_groups, add_day_task, add_shift_info, read_df,
+                             remove_sessions_with_duplicate_trials, remove_sessions_with_wrong_rewards,
+                             subset_trials)
 from utils.trializer_v4 import apply_task_rules_from_json
 
 COLUMNS = ['animal', 'task', 'env', 'day_task', 'week_task', 'datetime', 'session', 'block_num', 'block_group',
@@ -27,9 +28,6 @@ def load_sessdf(path=SESSDF_PATH, animals=COHORTS['unstr']):
     return add_shift_info(df)[COLUMNS]
 
 
-STRUCTURED_PROFILES = ['[80 46 15 10]', '[46 80 46 15]', '[15 46 80 46]', '[10 15 46 80]']
-
-
 def load_hsbdf(path=HSBDF_PATH, animals=COHORTS['str']):
     """Correlated rats from the single hsbdf csv (trializer_v4_synced, same format as sessdf).
 
@@ -41,7 +39,7 @@ def load_hsbdf(path=HSBDF_PATH, animals=COHORTS['str']):
     df = apply_task_rules_from_json(df, rules_path=RULES_PATH)
     df = df[df.task == 'str'].copy()
     df['env'] = df.rewprobfull.isin(STRUCTURED_PROFILES).map({True: 'str', False: 'unstr'})
-    df['week_task'] = df.groupby(['animal', 'task'])['datetime'].transform(lambda x: ((x - x.min()).dt.days // 7) + 1)
+    df['week_task'] = df.groupby(['animal', 'task'])['datetime'].transform(lambda t: (t - t.min()).dt.days // 7 + 1)
     df = add_block_groups(df.reset_index(drop=True)).rename(columns={'sess_block': 'session'})
     df = add_day_task(df)
     df = remove_sessions_with_wrong_rewards(df)
@@ -69,20 +67,25 @@ def rats_with_enough_blocks(df, min_blocks=MIN_BLOCKS, n_trials=N_TRIALS):
     return n_long.index[n_long > min_blocks]
 
 
-def _select(df, task, after_day, block_group, min_blocks):
+def _select(df, task, after_day, block_group, min_blocks, first_trials=None):
     """select_trials, keeping rats whose data (all blocks, before block_group is applied) have more than
-    min_blocks blocks of at least N_TRIALS trials; min_blocks=None keeps all rats."""
+    min_blocks blocks of at least N_TRIALS trials; min_blocks=None keeps all rats. With first_trials, only
+    blocks with at least that many trials are kept, cut to their first first_trials trials."""
     trials = select_trials(df, task, after_day, block_group)
     if min_blocks is not None:
         rats = rats_with_enough_blocks(select_trials(df, task, after_day), min_blocks)
         trials = trials[trials.animal.isin(rats)]
+    if first_trials is not None:
+        trials = subset_trials(trials, first_trials, head_trials=first_trials)
     return trials
 
 
-def load_cohorts(after_day=EXPERT_AFTER_DAY, block_group=None, min_blocks=MIN_BLOCKS):
+def load_cohorts(after_day=EXPERT_AFTER_DAY, block_group=None, min_blocks=MIN_BLOCKS, first_trials=None):
     """{'unstr': uncorrelated rats, 'str': correlated rats}, expert data by default. The csv files are
-    read once per Python session. after_day=0 keeps all days."""
-    return {task: _select(df, task, after_day, block_group, min_blocks) for task, df in _cohort_tables().items()}
+    read once per Python session. after_day=0 keeps all days; block_group=1 keeps each session's first block;
+    first_trials=N_TRIALS keeps blocks with at least N_TRIALS trials, cut to their first N_TRIALS."""
+    return {task: _select(df, task, after_day, block_group, min_blocks, first_trials)
+            for task, df in _cohort_tables().items()}
 
 
 @lru_cache(maxsize=None)

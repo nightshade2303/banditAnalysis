@@ -6,8 +6,10 @@ import matplotlib
 matplotlib.use('Agg')  # save the figures without opening windows
 import matplotlib.pyplot as plt  # noqa: E402
 
-SCRIPTS = ['reward_rate', 'switch_rate', 'switch_distance', 'transition_matrices',
-           'switch_by_reward', 'switch_by_distance', 'switch_distance_by_reward', 'weekwise', 'group_comparisons', 'sessions_per_week']
+# figs/raster_generator.py is left out: it is run by hand for the chosen rat and sessions
+SCRIPTS = ['reward_profiles', 'env_proportions', 'env_correlations', 'reward_rate', 'switch_rate', 'switch_distance',
+           'transition_matrices', 'switch_by_reward', 'switch_by_distance', 'switch_distance_by_reward', 'weekwise',
+           'group_comparisons', 'sessions_per_week', 'cohort_first_300']
 
 for name in SCRIPTS:
     print(f'figs/{name}.py')

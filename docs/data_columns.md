@@ -44,7 +44,7 @@ This describes the trial tables made by [utils/load_data.py](../utils/load_data.
 
 ## Trials analysed
 
-- Rats: the expert plots use only rats whose expert data have more than 100 blocks of at least 100 trials (`MIN_BLOCKS`; set it to `None` to keep all rats).
+- Rats: the expert plots use every rat with expert data (`MIN_BLOCKS = None`); set `MIN_BLOCKS` to a number n to keep only rats whose expert data have more than n blocks of at least 100 trials.
 
 - Every-block plots and transition matrices: the first 100 trials of every block with at least 100 trials; shorter blocks are dropped.
 - Block 1 to block 2 plots: sessions where block 1 has at least 125 trials and block 2 at least 100. The plots show the first 100 and last 25 trials of block 1 and the first 100 trials of block 2.

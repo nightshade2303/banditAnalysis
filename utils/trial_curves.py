@@ -4,19 +4,18 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from utils.config import N_TRIALS, SMOOTH, SMOOTH_WINDOW, SMOOTH_WITHIN_SEGMENTS
-from utils.dfAnalysisHelpers import get_sessionwise_averages
+from utils.config import N_TRIALS, SMOOTH, SMOOTH_FULL_WINDOWS, SMOOTH_WINDOW, SMOOTH_WITHIN_SEGMENTS
 from utils.dfLoading import subset_trials
 
 
 def block_trial_matrix(df, col, n_trials=N_TRIALS):
-    """Mean of `col` at each of the first n_trials of a block, over all blocks with at least n_trials
-    trials (notebook cells 27, 42, 101). NaN values, e.g. switch distance on stay trials, are left out."""
-    blocks = subset_trials(df, trialsinsess=n_trials, head_trials=n_trials)
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', RuntimeWarning)  # a trial where a rat has only NaN gives NaN
-        per_rat = get_sessionwise_averages(blocks, metric=col)
-    return _trial_columns(pd.DataFrame(per_rat).T)
+    """Rats x trials: mean of `col` at each of the first n_trials of a block, over the rat's blocks with at
+    least n_trials trials. NaN values, e.g. switch distance on stay trials, are left out."""
+    blocks = subset_trials(df, n_trials, head_trials=n_trials)
+    trial_in_block = blocks.groupby(['animal', 'block_num']).cumcount()
+    values = pd.to_numeric(blocks[col], errors='coerce')
+    per_rat = values.groupby([blocks.animal, trial_in_block]).mean().unstack()
+    return _trial_columns(per_rat)
 
 
 def segment_matrix(df, col, segments, session_col='session'):
@@ -48,9 +47,11 @@ def segment_edges(segments):
     return np.cumsum([0] + [n for _, _, n in segments])
 
 
-def smooth_curves(curves, segments=None, window=SMOOTH_WINDOW, smooth=SMOOTH):
-    """Centred moving average along trials that ignores NaN; near an edge it averages over the trials
-    available (notebook cell 103). With segments and SMOOTH_WITHIN_SEGMENTS, segments are smoothed apart."""
+def smooth_curves(curves, segments=None, window=SMOOTH_WINDOW, smooth=SMOOTH, full_windows=SMOOTH_FULL_WINDOWS):
+    """Centred moving average along trials that ignores NaN. With full_windows, the trials whose window runs
+    past an edge (the first and last window // 2 trials) are NaN; otherwise they average over the trials
+    available (notebook cell 103). With segments and SMOOTH_WITHIN_SEGMENTS, segments are smoothed apart, so
+    each segment has its own edges."""
     if not smooth:
         return curves
     values = curves.to_numpy(dtype=float)
@@ -64,10 +65,15 @@ def smooth_curves(curves, segments=None, window=SMOOTH_WINDOW, smooth=SMOOTH):
         count = np.array([np.convolve(row, kernel, 'same') for row in valid.astype(float)])
         with np.errstate(invalid='ignore', divide='ignore'):
             out[:, start:end] = total / count
+        if full_windows:
+            half = window // 2
+            out[:, start:start + half] = np.nan
+            out[:, max(end - half, start):end] = np.nan
     return pd.DataFrame(out, index=curves.index, columns=curves.columns)
 
 
 def _trial_columns(curves):
+    """Name the axes of a rats x trials table: index 'animal', columns 'trial' numbered from 1."""
     curves.columns = np.arange(1, curves.shape[1] + 1)
     curves.index.name, curves.columns.name = 'animal', 'trial'
     return curves

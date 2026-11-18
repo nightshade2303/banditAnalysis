@@ -8,8 +8,9 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from utils.plotSettings import BLOCK_STYLE, save_figure
-from utils.task_profiles import PORTS, STR_PROFILES, UNSTR_EXAMPLES, UNSTR_PROFILES
+from utils.task_profiles import PORTS, REWARD_PERCENTS, STR_PROFILES, UNSTR_EXAMPLES, UNSTR_PROFILES
 
+top = max(REWARD_PERCENTS)  # 80%
 profiles = {'str': STR_PROFILES, 'unstr': UNSTR_PROFILES[UNSTR_EXAMPLES]}
 source = pd.concat({b: pd.DataFrame(p, columns=[f'port_{i}' for i in PORTS]) for b, p in profiles.items()},
                    names=['block_type', 'example'])
@@ -19,8 +20,8 @@ for row0, (block_type, probs) in zip([0, 2], profiles.items()):  # structured ro
         r, c = divmod(i, 2)
         ax = axes[row0 + r, c]
         ax.bar(PORTS, p, width=1, color=BLOCK_STYLE[block_type]['color'])
-        ax.set(ylim=(0, 80), yticks=[0, 80], xticks=PORTS, ylabel='Reward %')
+        ax.set(ylim=(0, top), yticks=[0, top], xticks=PORTS, ylabel='Reward %')
 for ax in axes[-1]:
-    ax.set_xlabel('Ports')
+    ax.set_xlabel('Port')
 fig.tight_layout()
 save_figure(fig, 'reward_profiles', source_data=source)
